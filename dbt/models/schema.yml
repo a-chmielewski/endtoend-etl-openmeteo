@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: staging
+    schema: staging
+    tables:
+      - name: weather_hourly
+
+models:
+  - name: stg_weather_hourly
+    columns:
+      - name: timestamp
+        tests: [not_null]
+      - name: city
+        tests: [not_null]
+
+  - name: fct_city_day
+    columns:
+      - name: day
+        tests: [not_null]
+      - name: city
+        tests: [not_null]

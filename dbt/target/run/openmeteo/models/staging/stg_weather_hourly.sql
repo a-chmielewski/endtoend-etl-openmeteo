@@ -1,0 +1,13 @@
+
+  create view "analytics"."staging"."stg_weather_hourly__dbt_tmp"
+    
+    
+  as (
+    SELECT
+    city,
+    timestamp,
+    CAST(temperature_2m AS DOUBLE PRECISION) AS temperature_2m,
+    CAST(precipitation AS DOUBLE PRECISION) AS precipitation,
+    CAST(wind_speed_10m AS DOUBLE PRECISION) AS wind_speed_10m
+FROM "analytics"."staging"."weather_hourly"
+  );
