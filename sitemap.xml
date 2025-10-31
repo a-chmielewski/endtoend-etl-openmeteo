@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://a-chmielewski.github.io/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/architecture/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/architecture/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/credits/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/credits/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/dashboard/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/dashboard/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/data_model/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/data_model/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/data_qulaity/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/data_qulaity/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
     <url>
-         <loc>https://a-chmielewski.github.io/how_to_run/</loc>
+         <loc>https://a-chmielewski.github.io/endtoend-etl-openmeteo/how_to_run/</loc>
          <lastmod>2025-10-31</lastmod>
     </url>
 </urlset>
