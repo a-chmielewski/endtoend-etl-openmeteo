@@ -128,15 +128,27 @@
 .feature-icon {
   font-size: 2.5rem;
   margin-bottom: 1rem;
+  line-height: 1;
+}
+
+.feature-icon .twemoji,
+.feature-icon svg {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .feature-card h3 {
   color: #ffffff;
   margin-bottom: 0.75rem;
-  font-size: 1.1rem;
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.3;
   word-break: keep-all;
   hyphens: none;
+}
+
+.feature-card h3 strong {
+  font-size: 0.95rem;
+  display: block;
 }
 
 .feature-card p {
@@ -170,11 +182,10 @@
 
 .tech-item strong {
   color: #00d4ff;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   display: block;
   margin-bottom: 0.25rem;
-  word-break: keep-all;
-  hyphens: none;
+  line-height: 1.2;
 }
 
 .tech-item span {
@@ -212,12 +223,9 @@
 
 .stat-label {
   color: #b8c5d6;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  word-break: keep-all;
-  hyphens: none;
-  white-space: nowrap;
 }
 
 /* Dashboard Preview */
