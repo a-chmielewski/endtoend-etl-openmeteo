@@ -136,7 +136,7 @@ with DAG(
                 winds = hourly.get("wind_speed_10m", [])
 
                 if not times:
-                    print(f"  ⚠ No data returned for batch")
+                    print("  ⚠ No data returned for batch")
                     continue
 
                 # Write each hour as separate file
@@ -183,7 +183,7 @@ with DAG(
             all_results[city] = keys
 
         total_keys = sum(len(v) for v in all_results.values())
-        print(f"\n=== BACKFILL EXTRACT COMPLETE ===")
+        print("\n=== BACKFILL EXTRACT COMPLETE ===")
         print(f"Total files: {total_keys}")
 
         return all_results
@@ -223,7 +223,7 @@ with DAG(
 
         total_rows = 0
 
-        print(f"=== LOADING BACKFILL DATA ===\n")
+        print("=== LOADING BACKFILL DATA ===\n")
 
         for city, keys in all_results.items():
             print(f"--- Loading {city}: {len(keys)} files ---")
