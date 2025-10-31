@@ -1,9 +1,52 @@
+# Python
 __pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
 .venv/
 .env
-**/__pycache__/
-**/*.pyc
-**/.pytest_cache/
+.env.*
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# OS / Editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
 logs/
+airflow/logs/
+
+# MkDocs
+site/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Great Expectations
+ge/data_docs/
+ge/uncommitted/
+ge/uncommitted/validations/
+# (keep ge/expectations and ge/checkpoints tracked)
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Docs and Misc
 OCTOBER_2025_GUIDE.md
 ge/SETUP.md
+**/.pytest_cache/
+*.sqlite
+*.db
+*.log
