@@ -240,10 +240,13 @@ GROUP BY city, DATE_TRUNC('day', timestamp);
 The pipeline is pre-configured for four European cities:
 
 
-| **Berlin** | 52.52°N | 13.41°E |
-| **Warsaw** | 52.23°N | 21.01°E |
-| **London** | 51.51°N | -0.13°W |
-| **Paris**  | 48.85°N | 2.35°E  |
+| City      | Latitude | Longitude |
+|-----------|----------|-----------|
+| **Berlin** | 52.52°N | 13.41°E   |
+| **Warsaw** | 52.23°N | 21.01°E   |
+| **London** | 51.51°N | -0.13°W   |
+| **Paris**  | 48.85°N | 2.35°E    |
+
 
 **Adding New Cities:**
 
