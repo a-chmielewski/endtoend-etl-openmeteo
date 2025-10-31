@@ -32,3 +32,4 @@ nav:
   - Data Quality: data_quality.md
   - Dashboard: dashboard.md
   - Credits: credits.md
+  - Lineage (dbt docs): dbt/index.html
