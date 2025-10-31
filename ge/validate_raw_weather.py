@@ -16,6 +16,8 @@ import boto3
 from botocore.config import Config
 from typing import Dict, List
 import great_expectations as gx
+import pandas as pd
+from great_expectations.core.expectation_suite import ExpectationSuite
 
 
 def _resolve_endpoint() -> str:
@@ -97,12 +99,11 @@ def fetch_s3_objects_as_records(all_results: Dict[str, List[str]]) -> List[dict]
 
 
 def validate_weather_data(all_results: Dict[str, List[str]]) -> dict:
-    import pandas as pd
-    import great_expectations as gx
-    from great_expectations.core.expectation_suite import ExpectationSuite
 
     # Fetch and flatten
-    print(f"Fetching data from {sum(len(v) for v in all_results.values())} S3 objects...")
+    print(
+        f"Fetching data from {sum(len(v) for v in all_results.values())} S3 objects..."
+    )
     records = fetch_s3_objects_as_records(all_results)
     print(f"Fetched {len(records)} hourly records")
     if not records:
@@ -112,50 +113,37 @@ def validate_weather_data(all_results: Dict[str, List[str]]) -> dict:
 
     # ---- Fluent API start ----
     # fluent file-based context (works with `.sources`)
-    context = gx.get_context()
+    context = gx.get_context(mode="ephemeral")
 
-    # add a Pandas datasource & a DataFrame asset (Fluent)
-    ds = context.sources.add_pandas(name="pandas_src")
-    asset = ds.add_dataframe_asset(name="weather_data")
-
-    # build batch request from the in-memory DataFrame
-    batch_request = asset.build_batch_request(dataframe=df)
-
+    # create or get suite
     suite_name = "openmeteo_raw_suite"
-    # make sure the suite exists (idempotent)
     try:
         context.suites.add(ExpectationSuite(name=suite_name))
     except Exception:
-        # If it already exists, ignore
         pass
 
-    # get validator against that suite
-    validator = context.get_validator(
-        batch_request=batch_request,
-        expectation_suite_name=suite_name,
-    )
-    # ---- Fluent API end ----
+    # Direct validator from DataFrame (no datasource/asset):
+    # `from_pandas` returns a Validator bound to an in-memory DataFrame
+    validator = gx.from_pandas(df, expectation_suite_name=suite_name)
 
-    print("\nDefining expectations...")
-    validator.expect_column_values_to_not_be_null(column="time")
-    validator.expect_column_values_to_not_be_null(column="city")
-    validator.expect_column_values_to_not_be_null(column="latitude")
-    validator.expect_column_values_to_not_be_null(column="longitude")
-
+    # expectations exactly as you already have...
+    validator.expect_column_values_to_not_be_null("time")
+    validator.expect_column_values_to_not_be_null("city")
+    validator.expect_column_values_to_not_be_null("latitude")
+    validator.expect_column_values_to_not_be_null("longitude")
     validator.expect_column_values_to_be_between(
-        column="temperature_2m", min_value=-90.0, max_value=60.0, mostly=1.0
+        "temperature_2m", -90.0, 60.0, mostly=1.0
     )
     validator.expect_column_values_to_be_between(
-        column="precipitation", min_value=0.0, max_value=1000.0, mostly=1.0
+        "precipitation", 0.0, 1000.0, mostly=1.0
     )
     validator.expect_column_values_to_be_between(
-        column="wind_speed_10m", min_value=0.0, max_value=200.0, mostly=1.0
+        "wind_speed_10m", 0.0, 200.0, mostly=1.0
     )
-    validator.expect_column_values_to_not_be_null(column="timezone")
+    validator.expect_column_values_to_not_be_null("timezone")
 
     validator.save_expectation_suite(discard_failed_expectations=False)
 
-    print("\nRunning validation...")
     results = validator.validate()
 
     print("\n" + "=" * 70)
@@ -185,7 +173,6 @@ def validate_weather_data(all_results: Dict[str, List[str]]) -> dict:
         )
 
     return results
-
 
 
 if __name__ == "__main__":
