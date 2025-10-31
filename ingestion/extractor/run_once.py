@@ -33,8 +33,8 @@ print(f"Got {len(times)} hourly data points")
 files_written = 0
 for i, time_str in enumerate(times):
     # Parse timestamp
-    hour_dt = dt.datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-    
+    hour_dt = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+
     # Create single-hour payload
     single_hour_payload = {
         "latitude": payload.get("latitude"),
@@ -44,13 +44,15 @@ for i, time_str in enumerate(times):
             "time": [time_str],
             "temperature_2m": [temps[i]] if i < len(temps) else [None],
             "precipitation": [precips[i]] if i < len(precips) else [None],
-            "wind_speed_10m": [winds[i]] if i < len(winds) else [None]
-        }
+            "wind_speed_10m": [winds[i]] if i < len(winds) else [None],
+        },
     }
-    
+
     # Write with the actual hour for partitioning
     partition_dt = hour_dt.replace(tzinfo=None)
-    key = write_raw("raw", "weather", single_hour_payload, city=CITY, partition_dt=partition_dt)
+    key = write_raw(
+        "raw", "weather", single_hour_payload, city=CITY, partition_dt=partition_dt
+    )
     files_written += 1
     print(f"  ✓ Wrote to {key}")
 

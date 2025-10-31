@@ -11,7 +11,7 @@ with DAG(
     dag_id="etl_openmeteo",
     # Use a fixed start_date (recommended). Adjust if needed.
     start_date=timezone.datetime(2025, 10, 30),
-    schedule="0 * * * *",          # hourly at :00
+    schedule="0 * * * *",  # hourly at :00
     catchup=False,
     default_args=DEFAULT_ARGS,
     tags=["openmeteo"],
@@ -25,7 +25,7 @@ with DAG(
         """
         import datetime as dt
         from ingestion.extractor.openmeteo_client import fetch_hourly_data
-        from ingestion.extractor.s3_writer import write_raw 
+        from ingestion.extractor.s3_writer import write_raw
 
         CITIES = {
             "Warsaw": (52.23, 21.01),
@@ -44,8 +44,10 @@ with DAG(
 
         for city, (latitude, longitude) in CITIES.items():
             print(f"\n--- Processing {city} ({latitude}, {longitude}) ---")
-            
-            payload = fetch_hourly_data(latitude, longitude, start.isoformat(), end.isoformat())
+
+            payload = fetch_hourly_data(
+                latitude, longitude, start.isoformat(), end.isoformat()
+            )
 
             hourly = payload.get("hourly", {})
             times = hourly.get("time", [])
@@ -62,11 +64,11 @@ with DAG(
             keys = []
             for i, time_str in enumerate(times):
                 hour_dt = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-                
+
                 # Ensure hour_dt is UTC-aware for comparison
                 if hour_dt.tzinfo is None:
                     hour_dt = hour_dt.replace(tzinfo=dt.timezone.utc)
-                
+
                 # Filter: only keep hours within our 6-hour window
                 if not (start <= hour_dt < end):
                     continue
@@ -85,7 +87,13 @@ with DAG(
 
                 # partition by the *actual* hour as naive dt
                 partition_dt = hour_dt.replace(tzinfo=None)
-                key = write_raw("raw", "weather", single_hour_payload, city=city, partition_dt=partition_dt)
+                key = write_raw(
+                    "raw",
+                    "weather",
+                    single_hour_payload,
+                    city=city,
+                    partition_dt=partition_dt,
+                )
                 s3_uri = f"s3://raw/{key}"
                 print(f"  ✓ Wrote to {s3_uri}")
                 keys.append(s3_uri)
@@ -97,7 +105,7 @@ with DAG(
         print("\n=== EXTRACT COMPLETE ===")
         print(f"Total cities: {len(all_results)}")
         print(f"Total files: {total_keys}")
-        
+
         return all_results
 
     @task
@@ -105,35 +113,35 @@ with DAG(
         """
         Validate raw weather data using Great Expectations.
         This task runs AFTER extraction and BEFORE loading.
-        
+
         Args:
             all_results: dict with city names as keys, lists of S3 URIs as values
-            
+
         Returns:
             all_results (passed through on success)
-            
+
         Raises:
             ValueError: if validation fails (blocks the load task)
         """
         from ge.validate_raw_weather import validate_weather_data
-        
-        print("="*70)
+
+        print("=" * 70)
         print("GREAT EXPECTATIONS VALIDATION")
-        print("="*70)
-        
+        print("=" * 70)
+
         total_files = sum(len(v) for v in all_results.values())
         print(f"\nValidating {total_files} files across {len(all_results)} cities")
-        
+
         try:
             # Run GE validation - raises ValueError if validation fails
             validate_weather_data(all_results)
-            
+
             print("\n✅ All data quality checks passed!")
             print("Proceeding to load data into Postgres...\n")
-            
+
             # Return all_results to pass to next task
             return all_results
-            
+
         except Exception as e:
             print(f"\n❌ VALIDATION FAILED: {e}")
             print("\n⚠️  Load task will be skipped due to data quality issues.")
@@ -149,18 +157,18 @@ with DAG(
         from ingestion.loader.load_to_postgres import load_one
 
         total_rows = 0
-        
+
         print(f"=== LOADING DATA FOR {len(all_results)} CITIES ===\n")
 
         for city, keys in all_results.items():
             print(f"--- Loading {city}: {len(keys)} files ---")
             city_rows = 0
-            
+
             for s3_uri in keys:
                 rows = load_one(s3_uri, city)
                 print(f"  ✓ Loaded {s3_uri}: {rows} rows")
                 city_rows += rows or 0
-            
+
             print(f"Total rows for {city}: {city_rows}\n")
             total_rows += city_rows
 

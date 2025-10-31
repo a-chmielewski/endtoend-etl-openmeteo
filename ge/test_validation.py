@@ -9,10 +9,10 @@ This script demonstrates:
 
 def test_validation_with_good_data():
     """Test that validation passes with properly formatted data."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 1: Validation with GOOD data")
-    print("="*70)
-    
+    print("=" * 70)
+
     # This would normally come from actual S3 files
     # For testing, we simulate the structure
     good_records = [
@@ -39,22 +39,24 @@ def test_validation_with_good_data():
             "wind_speed_10m": 8.1,
         },
     ]
-    
+
     print("\nSample good data:")
     print(f"- {len(good_records)} records")
-    print(f"- Temperature range: {min(r['temperature_2m'] for r in good_records):.1f}°C to {max(r['temperature_2m'] for r in good_records):.1f}°C")
+    print(
+        f"- Temperature range: {min(r['temperature_2m'] for r in good_records):.1f}°C to {max(r['temperature_2m'] for r in good_records):.1f}°C"
+    )
     print("- All required fields present: ✓")
-    
+
     print("\n✅ This data would PASS validation")
     print("   → Load task would proceed")
 
 
 def test_validation_with_bad_data():
     """Test that validation fails with invalid data."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 2: Validation with BAD data")
-    print("="*70)
-    
+    print("=" * 70)
+
     bad_records = [
         {
             "city": "Warsaw",
@@ -79,14 +81,14 @@ def test_validation_with_bad_data():
             "wind_speed_10m": 8.1,
         },
     ]
-    
+
     print("\nSample bad data with violations:")
     print(f"- {len(bad_records)} records")
     print("\nViolations detected:")
     print("  ❌ Record 1: NULL timestamp (required field)")
     print("  ❌ Record 2: Temperature = 150°C (exceeds max of 60°C)")
     print("  ❌ Record 2: Precipitation = -5.0mm (negative value)")
-    
+
     print("\n❌ This data would FAIL validation")
     print("   → Load task would be BLOCKED")
     print("   → Airflow task would fail")
@@ -95,11 +97,12 @@ def test_validation_with_bad_data():
 
 def show_validation_flow():
     """Show the complete validation flow in the pipeline."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("VALIDATION FLOW IN PIPELINE")
-    print("="*70)
-    
-    print("""
+    print("=" * 70)
+
+    print(
+        """
 1. EXTRACT Task
    ├─ Fetch data from Open-Meteo API
    ├─ Write JSON files to S3/MinIO
@@ -124,16 +127,18 @@ def show_validation_flow():
 4. DBT Transformation
    ├─ stg_weather_hourly
    └─ fct_city_day
-""")
+"""
+    )
 
 
 def show_example_output():
     """Show example validation output."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("EXAMPLE: Successful Validation Output")
-    print("="*70)
-    
-    print("""
+    print("=" * 70)
+
+    print(
+        """
 Fetching data from 24 S3 objects...
 Fetched 24 hourly records
 
@@ -152,13 +157,15 @@ Success percentage: 100.00%
 
 ✅ All data quality checks passed!
 Proceeding to load data into Postgres...
-""")
+"""
+    )
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("EXAMPLE: Failed Validation Output")
-    print("="*70)
-    
-    print("""
+    print("=" * 70)
+
+    print(
+        """
 Fetching data from 24 S3 objects...
 Fetched 24 hourly records
 
@@ -194,23 +201,25 @@ FAILED EXPECTATIONS:
 Please review the validation results above and fix data issues.
 
 [Task failed - Load task will not run]
-""")
+"""
+    )
 
 
 if __name__ == "__main__":
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("GREAT EXPECTATIONS VALIDATION - TEST SCENARIOS")
-    print("="*70)
-    
+    print("=" * 70)
+
     test_validation_with_good_data()
     test_validation_with_bad_data()
     show_validation_flow()
     show_example_output()
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print("To run actual validation with real S3 data:")
-    print("="*70)
-    print("""
+    print("=" * 70)
+    print(
+        """
     from ge.validate_raw_weather import validate_weather_data
     
     results = {
@@ -223,7 +232,7 @@ if __name__ == "__main__":
         print("✅ Validation passed!")
     except ValueError as e:
         print(f"❌ Validation failed: {e}")
-    """)
-    
-    print("\n" + "="*70 + "\n")
+    """
+    )
 
+    print("\n" + "=" * 70 + "\n")

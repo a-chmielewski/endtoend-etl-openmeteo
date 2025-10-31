@@ -8,11 +8,17 @@ from urllib.parse import urlparse
 from typing import Iterator, Tuple
 from psycopg2.extras import execute_values
 
+
 def _resolve_endpoint() -> str:
-    ep = os.getenv("MINIO_ENDPOINT_URL") or os.getenv("MINIO_ENDPOINT") or "http://localhost:9000"
+    ep = (
+        os.getenv("MINIO_ENDPOINT_URL")
+        or os.getenv("MINIO_ENDPOINT")
+        or "http://localhost:9000"
+    )
     if not ep.startswith("http"):
         ep = f"http://{ep}"
     return ep
+
 
 S3 = boto3.client(
     "s3",
@@ -22,6 +28,7 @@ S3 = boto3.client(
     region_name=os.getenv("MINIO_REGION", "us-east-1"),
     config=Config(s3={"addressing_style": "path"}),
 )
+
 
 def _connect_pg():
     params = dict(
@@ -34,14 +41,15 @@ def _connect_pg():
         options="-c statement_timeout=60000",
     )
     try:
-        print(f"[pg] connecting host={params['host']} db={params['dbname']} user={params['user']} password={params['password']}")
+        print(
+            f"[pg] connecting host={params['host']} db={params['dbname']} user={params['user']} password={params['password']}"
+        )
         return psycopg2.connect(**params)
     except psycopg2.OperationalError:
         # If env / IDE forced 'analytics-db' or 'localhost', fall back to IPv4 explicitly
         params["host"] = "localhost"
         print("[pg] retrying with host=localhost")
         return psycopg2.connect(**params)
-
 
 
 def iter_s3_keys(bucket: str, prefix: str) -> Iterator[Tuple[str, str]]:
@@ -61,15 +69,16 @@ def iter_s3_keys(bucket: str, prefix: str) -> Iterator[Tuple[str, str]]:
             break
         token = resp.get("NextContinuationToken")
 
+
 def _load_key_into_db(pg, cur, bucket: str, key: str, city: str) -> int:
     obj = S3.get_object(Bucket=bucket, Key=key)
     payload = json.loads(obj["Body"].read())
 
     hourly = payload.get("hourly") or {}
-    hours  = hourly.get("time") or []
-    temp   = hourly.get("temperature_2m") or []
+    hours = hourly.get("time") or []
+    temp = hourly.get("temperature_2m") or []
     precip = hourly.get("precipitation") or []
-    wind   = hourly.get("wind_speed_10m") or []
+    wind = hourly.get("wind_speed_10m") or []
 
     # keep only fully-paired rows
     n = min(len(hours), len(temp), len(precip), len(wind))
@@ -92,6 +101,7 @@ def _load_key_into_db(pg, cur, bucket: str, key: str, city: str) -> int:
         rows,
     )
     return n
+
 
 def load_one(s3_uri: str, city: str) -> int:
     # s3://raw/weather/ds=.../openmeteo_...json
@@ -122,11 +132,14 @@ def load_one(s3_uri: str, city: str) -> int:
             )
     return len(rows)
 
-def load_all_weather(city: str,
-                     bucket: str = "raw",
-                     prefix: str = "weather/",
-                     skip_logged: bool = True,
-                     limit_files: int | None = None) -> tuple[int, int]:
+
+def load_all_weather(
+    city: str,
+    bucket: str = "raw",
+    prefix: str = "weather/",
+    skip_logged: bool = True,
+    limit_files: int | None = None,
+) -> tuple[int, int]:
     """
     Load ALL objects under s3://{bucket}/{prefix} into staging.weather_hourly.
     Returns (files_processed, total_rows_inserted).
@@ -136,7 +149,8 @@ def load_all_weather(city: str,
     total_rows = 0
     with _connect_pg() as pg, pg.cursor() as cur:
         if skip_logged:
-            cur.execute("""
+            cur.execute(
+                """
                 CREATE TABLE IF NOT EXISTS staging._ingest_log (
                     bucket text NOT NULL,
                     key    text PRIMARY KEY,
@@ -144,7 +158,8 @@ def load_all_weather(city: str,
                     rows_inserted int,
                     ingested_at timestamptz DEFAULT now()
                 )
-            """)
+            """
+            )
 
         for key, etag in iter_s3_keys(bucket, prefix):
             if skip_logged:
@@ -157,14 +172,17 @@ def load_all_weather(city: str,
             files += 1
 
             if skip_logged:
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO staging._ingest_log (bucket, key, etag, rows_inserted)
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (key) DO UPDATE
                       SET etag = EXCLUDED.etag,
                           rows_inserted = EXCLUDED.rows_inserted,
                           ingested_at = now()
-                """, (bucket, key, etag, rows))
+                """,
+                    (bucket, key, etag, rows),
+                )
 
             if limit_files and files >= limit_files:
                 break
