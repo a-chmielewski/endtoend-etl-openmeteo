@@ -197,7 +197,7 @@
 /* Stats Section */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 1rem;
   margin: 2rem 0;
 }
@@ -212,7 +212,7 @@
 }
 
 .stat-value {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 700;
   background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
   -webkit-background-clip: text;
@@ -225,10 +225,10 @@
 
 .stat-label {
   color: #b8c5d6;
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.75rem;
   letter-spacing: 0.3px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 /* Dashboard Preview */
