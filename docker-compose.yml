@@ -39,7 +39,7 @@ services:
       - airflow_pg:/var/lib/postgresql/data
 
   airflow-init:
-    image: apache/airflow:2.9.2
+    image: apache/airflow:2.9.2-python3.11
     entrypoint: /bin/bash
     environment:
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -48,20 +48,19 @@ services:
     depends_on: [airflow-db]
 
   airflow-scheduler:
-    image: apache/airflow:2.9.2
+    image: apache/airflow:2.9.2-python3.11
     command: scheduler
     environment:
-      # Airflow config
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
       - PYTHONPATH=/opt/airflow
 
-      # Constrained provider installs
+      # constraints setup 
       - AIRFLOW_VERSION=${AIRFLOW_VERSION}
       - PYTHON_VERSION=${PYTHON_VERSION}
       - AIRFLOW_CONSTRAINTS_URL=${AIRFLOW_CONSTRAINTS_URL}
-      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres
+      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres great-expectations>=1.8,<2 pandas sqlalchemy
 
       # app env
       - MINIO_ENDPOINT_URL=http://minio:9000
@@ -76,28 +75,28 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./ingestion:/opt/airflow/ingestion
+      - ./ge:/opt/airflow/ge
     depends_on:
       - airflow-init
       - minio
       - analytics-db
 
   airflow-webserver:
-    image: apache/airflow:2.9.2
+    image: apache/airflow:2.9.2-python3.11
     command: webserver
     ports: ["8080:8080"]
     environment:
-      # Airflow config
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__WEBSERVER__RBAC=True
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
       - PYTHONPATH=/opt/airflow
 
-      # Constrained provider installs
+      # constraints setup
       - AIRFLOW_VERSION=${AIRFLOW_VERSION}
       - PYTHON_VERSION=${PYTHON_VERSION}
       - AIRFLOW_CONSTRAINTS_URL=${AIRFLOW_CONSTRAINTS_URL}
-      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres
+      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres great-expectations>=1.8,<2 pandas sqlalchemy
 
       # app env
       - MINIO_ENDPOINT_URL=http://minio:9000
@@ -112,8 +111,10 @@ services:
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./ingestion:/opt/airflow/ingestion
+      - ./ge:/opt/airflow/ge
     depends_on:
       - airflow-scheduler
+
 
 volumes:
   minio_data:

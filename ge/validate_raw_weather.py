@@ -96,173 +96,96 @@ def fetch_s3_objects_as_records(all_results: Dict[str, List[str]]) -> List[dict]
     return records
 
 
-def create_expectation_suite(context):
-    """
-    Create or update the expectation suite for raw weather data.
-
-    Expectations:
-    - time field must not be null
-    - temperature_2m must be between -90 and 60 Celsius (extreme but realistic bounds)
-    - precipitation must be >= 0 (cannot be negative)
-    - wind_speed_10m must be >= 0 (cannot be negative)
-    - city, latitude, longitude must not be null
-    """
-    suite_name = "openmeteo_raw_suite"
-
-    try:
-        # Try to get existing suite
-        suite = context.get_expectation_suite(expectation_suite_name=suite_name)
-        print(f"Using existing expectation suite: {suite_name}")
-    except Exception:
-        # Create new suite
-        suite = context.add_expectation_suite(expectation_suite_name=suite_name)
-        print(f"Created new expectation suite: {suite_name}")
-
-    return suite
-
-
 def validate_weather_data(all_results: Dict[str, List[str]]) -> dict:
-    """
-    Validate raw weather data from S3 using Great Expectations.
+    import pandas as pd
+    import great_expectations as gx
+    from great_expectations.core.expectation_suite import ExpectationSuite
 
-    Args:
-        all_results: Dict with city names as keys, lists of S3 URIs as values
-
-    Returns:
-        Validation results dictionary
-
-    Raises:
-        Exception if validation fails
-    """
-    # Initialize GE context
-    context = gx.get_context(mode="ephemeral")
-
-    # Fetch and flatten S3 data
-    print(
-        f"Fetching data from {sum(len(v) for v in all_results.values())} S3 objects..."
-    )
+    # Fetch and flatten
+    print(f"Fetching data from {sum(len(v) for v in all_results.values())} S3 objects...")
     records = fetch_s3_objects_as_records(all_results)
     print(f"Fetched {len(records)} hourly records")
-
     if not records:
         raise ValueError("No records found to validate")
 
-    # Create or get expectation suite
-    suite = create_expectation_suite(context)
+    df = pd.DataFrame(records)
 
-    # Create a pandas datasource
-    datasource = context.sources.add_or_update_pandas(name="pandas_source")
-    data_asset = datasource.add_dataframe_asset(name="weather_data")
+    # ---- Fluent API start ----
+    # fluent file-based context (works with `.sources`)
+    context = gx.get_context()
 
-    # Create batch request
-    batch_request = data_asset.build_batch_request(dataframe=records)
+    # add a Pandas datasource & a DataFrame asset (Fluent)
+    ds = context.sources.add_pandas(name="pandas_src")
+    asset = ds.add_dataframe_asset(name="weather_data")
 
-    # Get validator
+    # build batch request from the in-memory DataFrame
+    batch_request = asset.build_batch_request(dataframe=df)
+
+    suite_name = "openmeteo_raw_suite"
+    # make sure the suite exists (idempotent)
+    try:
+        context.suites.add(ExpectationSuite(name=suite_name))
+    except Exception:
+        # If it already exists, ignore
+        pass
+
+    # get validator against that suite
     validator = context.get_validator(
         batch_request=batch_request,
-        expectation_suite_name=suite.expectation_suite_name,
+        expectation_suite_name=suite_name,
     )
+    # ---- Fluent API end ----
 
-    # Define expectations
     print("\nDefining expectations...")
-
-    # Critical fields must not be null
     validator.expect_column_values_to_not_be_null(column="time")
     validator.expect_column_values_to_not_be_null(column="city")
     validator.expect_column_values_to_not_be_null(column="latitude")
     validator.expect_column_values_to_not_be_null(column="longitude")
 
-    # Temperature bounds (reasonable Earth temperature range in Celsius)
     validator.expect_column_values_to_be_between(
-        column="temperature_2m",
-        min_value=-90.0,
-        max_value=60.0,
-        mostly=1.0,  # 100% of values
+        column="temperature_2m", min_value=-90.0, max_value=60.0, mostly=1.0
     )
-
-    # Precipitation must be non-negative
     validator.expect_column_values_to_be_between(
-        column="precipitation",
-        min_value=0.0,
-        max_value=1000.0,  # 1000mm is extreme but possible
-        mostly=1.0,
+        column="precipitation", min_value=0.0, max_value=1000.0, mostly=1.0
     )
-
-    # Wind speed must be non-negative
     validator.expect_column_values_to_be_between(
-        column="wind_speed_10m",
-        min_value=0.0,
-        max_value=200.0,  # ~400 km/h max recorded wind speed
-        mostly=1.0,
+        column="wind_speed_10m", min_value=0.0, max_value=200.0, mostly=1.0
     )
-
-    # Timezone should not be null
     validator.expect_column_values_to_not_be_null(column="timezone")
 
-    # Save expectations
     validator.save_expectation_suite(discard_failed_expectations=False)
 
-    # Create and run checkpoint
-    checkpoint_config = {
-        "name": "openmeteo_raw_checkpoint",
-        "config_version": 1.0,
-        "class_name": "Checkpoint",
-        "validations": [
-            {
-                "batch_request": batch_request,
-                "expectation_suite_name": suite.expectation_suite_name,
-            }
-        ],
-    }
+    print("\nRunning validation...")
+    results = validator.validate()
 
-    checkpoint = context.add_or_update_checkpoint(**checkpoint_config)
-
-    # Run validation
-    print("\nRunning validation checkpoint...")
-    results = checkpoint.run()
-
-    # Print results
     print("\n" + "=" * 70)
     print("VALIDATION RESULTS")
     print("=" * 70)
     print(f"Success: {results['success']}")
-    print(f"Statistics: {results.statistics}")
+    stats = results.get("statistics", {})
+    print(f"\nTotal expectations: {stats.get('evaluated_expectations', 0)}")
+    print(f"Successful: {stats.get('successful_expectations', 0)}")
+    print(f"Failed: {stats.get('unsuccessful_expectations', 0)}")
+    print(f"Success percentage: {stats.get('success_percent', 0):.2f}%")
 
-    validation_results = results.list_validation_results()[0]
-    print(
-        f"\nTotal expectations: {validation_results['statistics']['evaluated_expectations']}"
-    )
-    print(f"Successful: {validation_results['statistics']['successful_expectations']}")
-    print(f"Failed: {validation_results['statistics']['unsuccessful_expectations']}")
-    print(
-        f"Success percentage: {validation_results['statistics']['success_percent']:.2f}%"
-    )
-
-    # Show failed expectations
     if not results["success"]:
         print("\n" + "=" * 70)
         print("FAILED EXPECTATIONS:")
         print("=" * 70)
-        for result in validation_results["results"]:
-            if not result["success"]:
-                print(f"\n❌ {result['expectation_config']['expectation_type']}")
-                print(
-                    f"   Column: {result['expectation_config']['kwargs'].get('column', 'N/A')}"
-                )
-                print(f"   Details: {result.get('result', {})}")
-
-    print("=" * 70 + "\n")
-
-    # Raise exception if validation failed
-    if not results["success"]:
+        for r in results.get("results", []):
+            if not r.get("success", True):
+                exp = r.get("expectation_config", {})
+                print(f"\n❌ {exp.get('expectation_type', 'Unknown')}")
+                print(f"   Column: {exp.get('kwargs', {}).get('column', 'N/A')}")
+                print(f"   Details: {r.get('result', {})}")
         raise ValueError(
             f"Data validation failed! "
-            f"{validation_results['statistics']['unsuccessful_expectations']} "
-            f"out of {validation_results['statistics']['evaluated_expectations']} "
-            f"expectations failed."
+            f"{stats.get('unsuccessful_expectations', 0)} of "
+            f"{stats.get('evaluated_expectations', 0)} expectations failed."
         )
 
     return results
+
 
 
 if __name__ == "__main__":
