@@ -152,10 +152,6 @@ Option B - Via CLI:
 docker exec endtoend-etl-openmeteo-minio-1 mc mb /data/raw
 ```
 
-
-
-```
-
 ### Airflow Orchestration**
 
 1. Access Airflow UI: http://localhost:8080
