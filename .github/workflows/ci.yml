@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
       - run: pip install pytest great-expectations boto3 requests
+      - run: pytest ge/test_validation.py -v
 
   validate-airflow-dags:
     name: Validate Airflow DAGs
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
-      - run: pip install -r requirements.txt
+      - run: pip install apache-airflow==2.9.2 -r requirements.txt
       - name: Parse Airflow DAGs
         run: python -c "import sys; sys.path.insert(0, '.'); from airflow.dags.etl_openmeteo import dag; print('✓ DAG parsed successfully')"
         env:
@@ -58,4 +59,22 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
       - run: pip install dbt-postgres
-      - run: cd dbt && dbt deps && dbt compile
+      - name: Create dummy profiles.yml for syntax validation
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          openmeteo:
+            target: dev
+            outputs:
+              dev:
+                type: postgres
+                host: localhost
+                user: analytics
+                password: dummy
+                port: 5432
+                dbname: analytics
+                schema: staging
+                threads: 1
+          EOF
+      - run: cd dbt && dbt deps
+      - run: cd dbt && dbt parse

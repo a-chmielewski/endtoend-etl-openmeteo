@@ -1,4 +1,3 @@
-import os
 import datetime as dt
 from openmeteo_client import fetch_hourly_data
 from s3_writer import write_raw

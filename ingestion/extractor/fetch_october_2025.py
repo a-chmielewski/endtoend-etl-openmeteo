@@ -108,7 +108,7 @@ def fetch_october_2025_data(city: str = None, latitude: float = None, longitude:
                 
                 # Write with the actual hour for partitioning
                 partition_dt = hour_dt.replace(tzinfo=None)
-                key = write_raw("raw", "weather", single_hour_payload, city=city_label, partition_dt=partition_dt)
+                write_raw("raw", "weather", single_hour_payload, city=city_label, partition_dt=partition_dt)
                 hours_written += 1
             
             total_files += hours_written

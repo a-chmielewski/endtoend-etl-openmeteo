@@ -16,8 +16,6 @@ import boto3
 from botocore.config import Config
 from typing import Dict, List
 import great_expectations as gx
-from great_expectations.core.batch import RuntimeBatchRequest
-from great_expectations.checkpoint import Checkpoint
 
 
 def _resolve_endpoint() -> str:
@@ -111,7 +109,7 @@ def create_expectation_suite(context: gx.DataContext):
         # Try to get existing suite
         suite = context.get_expectation_suite(expectation_suite_name=suite_name)
         print(f"Using existing expectation suite: {suite_name}")
-    except:
+    except Exception:
         # Create new suite
         suite = context.add_expectation_suite(expectation_suite_name=suite_name)
         print(f"Created new expectation suite: {suite_name}")

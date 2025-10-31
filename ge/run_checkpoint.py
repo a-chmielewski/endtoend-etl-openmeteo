@@ -9,7 +9,6 @@ It validates the raw weather data before loading to Postgres.
 """
 
 import sys
-from validate_raw_weather import validate_weather_data
 
 
 def main():

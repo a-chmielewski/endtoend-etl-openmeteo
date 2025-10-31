@@ -94,7 +94,7 @@ with DAG(
             all_results[city] = keys
 
         total_keys = sum(len(v) for v in all_results.values())
-        print(f"\n=== EXTRACT COMPLETE ===")
+        print("\n=== EXTRACT COMPLETE ===")
         print(f"Total cities: {len(all_results)}")
         print(f"Total files: {total_keys}")
         
@@ -126,7 +126,7 @@ with DAG(
         
         try:
             # Run GE validation - raises ValueError if validation fails
-            validation_results = validate_weather_data(all_results)
+            validate_weather_data(all_results)
             
             print("\n✅ All data quality checks passed!")
             print("Proceeding to load data into Postgres...\n")
@@ -164,7 +164,7 @@ with DAG(
             print(f"Total rows for {city}: {city_rows}\n")
             total_rows += city_rows
 
-        print(f"=== LOAD COMPLETE ===")
+        print("=== LOAD COMPLETE ===")
         print(f"Total rows loaded across all cities: {total_rows}")
         return total_rows
 
