@@ -6,10 +6,6 @@ This script demonstrates:
 2. How validation fails and blocks with bad data
 """
 
-import json
-import tempfile
-from typing import Dict, List
-
 
 def test_validation_with_good_data():
     """Test that validation passes with properly formatted data."""
@@ -47,7 +43,7 @@ def test_validation_with_good_data():
     print("\nSample good data:")
     print(f"- {len(good_records)} records")
     print(f"- Temperature range: {min(r['temperature_2m'] for r in good_records):.1f}°C to {max(r['temperature_2m'] for r in good_records):.1f}°C")
-    print(f"- All required fields present: ✓")
+    print("- All required fields present: ✓")
     
     print("\n✅ This data would PASS validation")
     print("   → Load task would proceed")

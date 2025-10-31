@@ -92,7 +92,7 @@ def fetch_s3_objects_as_records(all_results: Dict[str, List[str]]) -> List[dict]
     return records
 
 
-def create_expectation_suite(context: gx.DataContext):
+def create_expectation_suite(context):
     """
     Create or update the expectation suite for raw weather data.
     
