@@ -161,7 +161,7 @@
 /* Tech Stack Section */
 .tech-stack {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   margin: 2rem 0;
 }
@@ -190,14 +190,15 @@
 
 .tech-item span {
   color: #b8c5d6;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 /* Stats Section */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
   margin: 2rem 0;
 }
 
@@ -206,7 +207,7 @@
   border: 1px solid #2a3551;
   border-left: 4px solid #00d4ff;
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1.25rem 1rem;
   text-align: center;
 }
 
@@ -218,14 +219,16 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+  line-height: 1;
 }
 
 .stat-label {
   color: #b8c5d6;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  line-height: 1.2;
 }
 
 /* Dashboard Preview */
