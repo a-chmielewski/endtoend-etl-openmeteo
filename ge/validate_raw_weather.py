@@ -8,6 +8,8 @@ It checks:
 - Precipitation is non-negative
 - Wind speed is non-negative
 - Timestamps are valid
+
+Uses Great Expectations 1.8+ Fluent API.
 """
 
 import os
@@ -17,7 +19,6 @@ from botocore.config import Config
 from typing import Dict, List
 import great_expectations as gx
 import pandas as pd
-from great_expectations.core.expectation_suite import ExpectationSuite
 
 
 def _resolve_endpoint() -> str:
@@ -99,80 +100,134 @@ def fetch_s3_objects_as_records(all_results: Dict[str, List[str]]) -> List[dict]
 
 
 def validate_weather_data(all_results: Dict[str, List[str]]) -> dict:
+    """
+    Validate weather data using Great Expectations 1.8+ Fluent API.
 
-    # Fetch and flatten
+    Args:
+        all_results: Dict with city names as keys, lists of S3 URIs as values
+
+    Returns:
+        Validation results dict
+
+    Raises:
+        ValueError: if validation fails
+    """
+    # Fetch and flatten S3 data into records
     print(
         f"Fetching data from {sum(len(v) for v in all_results.values())} S3 objects..."
     )
     records = fetch_s3_objects_as_records(all_results)
     print(f"Fetched {len(records)} hourly records")
+
     if not records:
         raise ValueError("No records found to validate")
 
     df = pd.DataFrame(records)
+    print(f"DataFrame shape: {df.shape}")
 
-    # ---- Fluent API start ----
-    # fluent file-based context (works with `.sources`)
+    # Create ephemeral GX context
     context = gx.get_context(mode="ephemeral")
 
-    # create or get suite
-    suite_name = "openmeteo_raw_suite"
-    try:
-        context.suites.add(ExpectationSuite(name=suite_name))
-    except Exception:
-        pass
+    # Add pandas datasource with dataframe asset
+    datasource = context.data_sources.add_pandas("weather_datasource")
+    data_asset = datasource.add_dataframe_asset(name="weather_hourly")
 
-    # Direct validator from DataFrame (no datasource/asset):
-    # `from_pandas` returns a Validator bound to an in-memory DataFrame
-    validator = gx.from_pandas(df, expectation_suite_name=suite_name)
+    # Add batch definition with dataframe
+    batch_definition = data_asset.add_batch_definition_whole_dataframe("weather_batch")
 
-    # expectations exactly as you already have...
-    validator.expect_column_values_to_not_be_null("time")
-    validator.expect_column_values_to_not_be_null("city")
-    validator.expect_column_values_to_not_be_null("latitude")
-    validator.expect_column_values_to_not_be_null("longitude")
-    validator.expect_column_values_to_be_between(
-        "temperature_2m", -90.0, 60.0, mostly=1.0
+    # Create expectation suite
+    suite_name = "openmeteo_raw_weather_suite"
+    suite = context.suites.add(gx.ExpectationSuite(name=suite_name))
+
+    # Add expectations to suite
+    suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="time"))
+    suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="city"))
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToNotBeNull(column="latitude")
     )
-    validator.expect_column_values_to_be_between(
-        "precipitation", 0.0, 1000.0, mostly=1.0
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToNotBeNull(column="longitude")
     )
-    validator.expect_column_values_to_be_between(
-        "wind_speed_10m", 0.0, 200.0, mostly=1.0
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToNotBeNull(column="timezone")
     )
-    validator.expect_column_values_to_not_be_null("timezone")
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToBeBetween(
+            column="temperature_2m", min_value=-90.0, max_value=60.0, mostly=1.0
+        )
+    )
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToBeBetween(
+            column="precipitation", min_value=0.0, max_value=1000.0, mostly=1.0
+        )
+    )
+    suite.add_expectation(
+        gx.expectations.ExpectColumnValuesToBeBetween(
+            column="wind_speed_10m", min_value=0.0, max_value=200.0, mostly=1.0
+        )
+    )
 
-    validator.save_expectation_suite(discard_failed_expectations=False)
+    # Create validation definition with batch definition
+    validation_definition = gx.ValidationDefinition(
+        data=batch_definition, suite=suite, name="weather_validation"
+    )
+    validation_definition = context.validation_definitions.add(validation_definition)
 
-    results = validator.validate()
+    # Run validation with dataframe
+    results = validation_definition.run(batch_parameters={"dataframe": df})
 
-    print("\n" + "=" * 70)
-    print("VALIDATION RESULTS")
-    print("=" * 70)
-    print(f"Success: {results['success']}")
-    stats = results.get("statistics", {})
-    print(f"\nTotal expectations: {stats.get('evaluated_expectations', 0)}")
-    print(f"Successful: {stats.get('successful_expectations', 0)}")
-    print(f"Failed: {stats.get('unsuccessful_expectations', 0)}")
-    print(f"Success percentage: {stats.get('success_percent', 0):.2f}%")
+    # Process and display results
+    _print_validation_results(results)
 
-    if not results["success"]:
-        print("\n" + "=" * 70)
-        print("FAILED EXPECTATIONS:")
-        print("=" * 70)
-        for r in results.get("results", []):
-            if not r.get("success", True):
-                exp = r.get("expectation_config", {})
-                print(f"\n❌ {exp.get('expectation_type', 'Unknown')}")
-                print(f"   Column: {exp.get('kwargs', {}).get('column', 'N/A')}")
-                print(f"   Details: {r.get('result', {})}")
+    # Check if validation passed
+    if not results.success:
+        failed_count = sum(1 for r in results.results if not r.success)
+        total_count = len(results.results)
         raise ValueError(
-            f"Data validation failed! "
-            f"{stats.get('unsuccessful_expectations', 0)} of "
-            f"{stats.get('evaluated_expectations', 0)} expectations failed."
+            f"Data validation failed! {failed_count} of {total_count} expectations failed."
         )
 
     return results
+
+
+def _print_validation_results(results) -> None:
+    """
+    Print formatted validation results.
+
+    Args:
+        results: GX validation results object
+    """
+    print("\n" + "=" * 70)
+    print("VALIDATION RESULTS")
+    print("=" * 70)
+    print(f"Success: {results.success}")
+
+    # Count expectations
+    total_expectations = len(results.results)
+    successful_expectations = sum(1 for r in results.results if r.success)
+    failed_expectations = total_expectations - successful_expectations
+    success_percent = (
+        (successful_expectations / total_expectations * 100)
+        if total_expectations > 0
+        else 0
+    )
+
+    print(f"\nTotal expectations: {total_expectations}")
+    print(f"Successful: {successful_expectations}")
+    print(f"Failed: {failed_expectations}")
+    print(f"Success percentage: {success_percent:.2f}%")
+
+    if not results.success:
+        print("\n" + "=" * 70)
+        print("FAILED EXPECTATIONS:")
+        print("=" * 70)
+        for result in results.results:
+            if not result.success:
+                expectation_type = result.expectation_config.type
+                column = result.expectation_config.kwargs.get("column", "N/A")
+                print(f"\n❌ {expectation_type}")
+                print(f"   Column: {column}")
+                print(f"   Result: {result.result}")
 
 
 if __name__ == "__main__":
