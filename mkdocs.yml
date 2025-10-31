@@ -1,35 +1,64 @@
-site_name: Aleksander Chmielewski — Data Engineering Portfolio
-site_url: https://a-chmielewski.github.io
-repo_url: https://github.com/a-chmielewski/openmeteo-etl
+site_name: OpenMeteo ETL Pipeline
+site_description: End-to-end data engineering pipeline with automated quality checks
+site_author: Aleksander Chmielewski
+site_url: https://a-chmielewski.github.io/endtoend-etl-openmeteo/
+
+repo_name: a-chmielewski/endtoend-etl-openmeteo
+repo_url: https://github.com/a-chmielewski/endtoend-etl-openmeteo
 
 theme:
   name: material
+  palette:
+    scheme: slate
+    primary: cyan
+    accent: cyan
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
     - content.code.copy
-    - toc.follow
-  palette:
-    - scheme: default
-      primary: blue
-      accent: blue
+  icon:
+    repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/custom.css
 
 markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
   - admonition
-  - toc:
-      permalink: true
   - pymdownx.details
-  - pymdownx.highlight
-
-plugins:
-  - search
-  - mermaid2
+  - attr_list
+  - md_in_html
+  - tables
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Home: index.md
-  - Architecture: architecture.md
-  - Data Model: data_model.md
-  - How to Run: how_to_run.md
-  - Data Quality: data_quality.md
   - Dashboard: dashboard.md
   - Credits: credits.md
-  - Lineage (dbt docs): dbt/index.html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/a-chmielewski
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/a-chmielewski/
+  generator: false
+
