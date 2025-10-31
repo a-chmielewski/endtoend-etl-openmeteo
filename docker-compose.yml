@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   minio:
     image: minio/minio:latest
@@ -9,10 +8,11 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
+
   analytics-db:
     image: postgres:16
     ports:
-      - "55432:5432"
+      - "55432:5432"         # host:container
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -20,6 +20,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./ingestion/loader/sql:/sql:ro
+
   metabase:
     image: metabase/metabase:latest
     ports: ["3000:3000"]
@@ -27,6 +28,7 @@ services:
       - MB_DB_FILE=/metabase-data/metabase.db
     volumes:
       - metabase_data:/metabase-data
+
   airflow-db:
     image: postgres:16
     environment:
@@ -35,6 +37,7 @@ services:
       - POSTGRES_DB=airflow
     volumes:
       - airflow_pg:/var/lib/postgresql/data
+
   airflow-init:
     image: apache/airflow:2.9.2
     entrypoint: /bin/bash
@@ -43,28 +46,75 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
     command: -c "airflow db init && airflow users create --username admin --password admin --firstname A --lastname C --role Admin --email admin@example.com"
     depends_on: [airflow-db]
+
   airflow-scheduler:
     image: apache/airflow:2.9.2
     command: scheduler
     environment:
+      # Airflow config
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
+      - PYTHONPATH=/opt/airflow
+
+      # Constrained provider installs
+      - AIRFLOW_VERSION=${AIRFLOW_VERSION}
+      - PYTHON_VERSION=${PYTHON_VERSION}
+      - AIRFLOW_CONSTRAINTS_URL=${AIRFLOW_CONSTRAINTS_URL}
+      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres
+
+      # app env
+      - MINIO_ENDPOINT_URL=http://minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=us-east-1
+      - POSTGRES_HOST=analytics-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./ingestion:/opt/airflow/ingestion
-    depends_on: [airflow-init]
+    depends_on:
+      - airflow-init
+      - minio
+      - analytics-db
+
   airflow-webserver:
     image: apache/airflow:2.9.2
     command: webserver
     ports: ["8080:8080"]
     environment:
+      # Airflow config
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__WEBSERVER__RBAC=True
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
+      - PYTHONPATH=/opt/airflow
+
+      # Constrained provider installs
+      - AIRFLOW_VERSION=${AIRFLOW_VERSION}
+      - PYTHON_VERSION=${PYTHON_VERSION}
+      - AIRFLOW_CONSTRAINTS_URL=${AIRFLOW_CONSTRAINTS_URL}
+      - _PIP_ADDITIONAL_REQUIREMENTS=--constraint ${AIRFLOW_CONSTRAINTS_URL} apache-airflow-providers-amazon apache-airflow-providers-postgres
+
+      # app env
+      - MINIO_ENDPOINT_URL=http://minio:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=us-east-1
+      - POSTGRES_HOST=analytics-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./ingestion:/opt/airflow/ingestion
-    depends_on: [airflow-scheduler]
+    depends_on:
+      - airflow-scheduler
+
 volumes:
   minio_data:
   pg_data:
