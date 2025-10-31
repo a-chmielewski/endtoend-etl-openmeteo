@@ -6,3 +6,5 @@ __pycache__/
 **/.pytest_cache/
 logs/
 OCTOBER_2025_GUIDE.md
+ge/SETUP.md
+ge/test_validation.py

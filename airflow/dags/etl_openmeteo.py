@@ -101,6 +101,46 @@ with DAG(
         return all_results
 
     @task
+    def validate(all_results: dict):
+        """
+        Validate raw weather data using Great Expectations.
+        This task runs AFTER extraction and BEFORE loading.
+        
+        Args:
+            all_results: dict with city names as keys, lists of S3 URIs as values
+            
+        Returns:
+            all_results (passed through on success)
+            
+        Raises:
+            ValueError: if validation fails (blocks the load task)
+        """
+        from ge.validate_raw_weather import validate_weather_data
+        
+        print("="*70)
+        print("GREAT EXPECTATIONS VALIDATION")
+        print("="*70)
+        
+        total_files = sum(len(v) for v in all_results.values())
+        print(f"\nValidating {total_files} files across {len(all_results)} cities")
+        
+        try:
+            # Run GE validation - raises ValueError if validation fails
+            validation_results = validate_weather_data(all_results)
+            
+            print("\n✅ All data quality checks passed!")
+            print("Proceeding to load data into Postgres...\n")
+            
+            # Return all_results to pass to next task
+            return all_results
+            
+        except Exception as e:
+            print(f"\n❌ VALIDATION FAILED: {e}")
+            print("\n⚠️  Load task will be skipped due to data quality issues.")
+            print("Please review the validation results above and fix data issues.\n")
+            raise  # This will fail the task and block the load
+
+    @task
     def load(all_results: dict):
         """
         Load each written S3 object into Postgres using your loader.
@@ -128,4 +168,8 @@ with DAG(
         print(f"Total rows loaded across all cities: {total_rows}")
         return total_rows
 
-    load(extract())
+    # DAG flow: extract -> validate -> load
+    # The validate task will block load if validation fails
+    extracted_data = extract()
+    validated_data = validate(extracted_data)
+    load(validated_data)

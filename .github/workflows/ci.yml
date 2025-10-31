@@ -1,0 +1,62 @@
+name: CI
+on: [push]
+jobs:
+  lint-format:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install ruff black
+      - run: ruff check .
+      - run: black --check .
+
+  test-great-expectations:
+    name: Great Expectations Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install pytest great-expectations boto3 requests
+      - run: pytest ge/test_validation.py -v
+
+  validate-airflow-dags:
+    name: Validate Airflow DAGs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt
+      - name: Parse Airflow DAGs
+        run: python -c "import sys; sys.path.insert(0, '.'); from airflow.dags.etl_openmeteo import dag; print('✓ DAG parsed successfully')"
+        env:
+          AIRFLOW__CORE__DAGS_FOLDER: ./airflow/dags
+          AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+
+  validate-ingestion:
+    name: Validate Ingestion Modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install requests boto3 psycopg2-binary
+      - name: Import extractor modules
+        run: |
+          python -c "from ingestion.extractor.openmeteo_client import fetch_hourly_data, fetch_archive_data; print('✓ Extractor imports OK')"
+          python -c "from ingestion.extractor.s3_writer import write_raw; print('✓ S3 writer imports OK')"
+      - name: Import loader modules
+        run: python -c "from ingestion.loader.load_to_postgres import load_one, load_all_weather; print('✓ Loader imports OK')"
+
+  dbt-compile:
+    name: dbt Compile & Test Definitions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install dbt-postgres
+      - run: cd dbt && dbt deps && dbt compile

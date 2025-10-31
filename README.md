@@ -5,17 +5,18 @@ End-to-end data engineering project that extracts weather data from the OpenMete
 ## Architecture
 
 ```
-┌─────────────┐     ┌────────┐     ┌──────────────┐     ┌─────┐     ┌──────────┐
-│ OpenMeteo   │────▶│ MinIO  │────▶│ PostgreSQL   │────▶│ dbt │────▶│ Metabase │
-│ API         │     │ (S3)   │     │ (Staging)    │     │     │     │          │
-└─────────────┘     └────────┘     └──────────────┘     └─────┘     └──────────┘
-    Extract          Store           Load                Transform    Visualize
+┌─────────────┐     ┌────────┐     ┌──────────┐     ┌──────────────┐     ┌─────┐     ┌──────────┐
+│ OpenMeteo   │────▶│ MinIO  │────▶│   GE     │────▶│ PostgreSQL   │────▶│ dbt │────▶│ Metabase │
+│ API         │     │ (S3)   │     │ Validate │     │ (Staging)    │     │     │     │          │
+└─────────────┘     └────────┘     └──────────┘     └──────────────┘     └─────┘     └──────────┘
+    Extract          Store          Quality Check     Load                Transform    Visualize
 ```
 
 ## Features
 
 - **Extract**: Fetch hourly weather data from OpenMeteo API
 - **Store**: Raw data in MinIO with date partitioning
+- **Validate**: Great Expectations data quality checks (blocks bad data)
 - **Load**: Upsert to PostgreSQL staging table (deduplicated)
 - **Transform**: dbt models for staging and daily aggregations
 - **Visualize**: Metabase dashboards
@@ -25,6 +26,7 @@ End-to-end data engineering project that extracts weather data from the OpenMete
 
 - **Data Source**: [OpenMeteo API](https://open-meteo.com/)
 - **Object Storage**: MinIO
+- **Data Quality**: Great Expectations
 - **Database**: PostgreSQL 16
 - **Transformation**: dbt
 - **Orchestration**: Apache Airflow
@@ -114,7 +116,8 @@ dbt test
 ```
 .
 ├── airflow/
-│   └── dags/                   # Airflow DAGs for orchestration
+│   └── dags/
+│       └── etl_openmeteo.py          # Main ETL DAG with GE validation
 ├── dbt/
 │   ├── models/
 │   │   ├── staging/            # Staging models
@@ -122,6 +125,11 @@ dbt test
 │   │   └── marts/              # Business logic models
 │   │       └── fct_city_day.sql
 │   └── dbt_project.yml
+├── ge/                                # Great Expectations validation
+│   ├── validate_raw_weather.py       # Main validation logic
+│   ├── run_checkpoint.py             # CLI wrapper
+│   ├── test_validation.py            # Test scenarios
+│   └── README.md                     # GE documentation
 ├── ingestion/
 │   ├── extractor/
 │   │   ├── openmeteo_client.py       # API client
@@ -287,11 +295,46 @@ pytest tests/
 2. DAG will auto-sync (volume mounted)
 3. View in Airflow UI: http://localhost:8080
 
+## Data Quality with Great Expectations
+
+The pipeline includes **Great Expectations** validation that runs between Extract and Load phases.
+
+### Validation Rules
+
+- ✅ **Time field** must not be null
+- ✅ **Temperature** must be between -90°C and 60°C
+- ✅ **Precipitation** must be >= 0mm (non-negative)
+- ✅ **Wind speed** must be >= 0 m/s (non-negative)
+- ✅ **City, latitude, longitude** must not be null
+
+### Validation Flow
+
+```
+Extract → Validate (GE) → Load
+          ↓
+          If validation fails:
+          - Load task is BLOCKED
+          - No bad data enters database
+          - Airflow task fails with details
+```
+
+### Testing Validation
+
+```bash
+# Run test scenarios
+python ge/test_validation.py
+
+# See validation logic
+cat ge/validate_raw_weather.py
+```
+
+For detailed documentation, see [ge/README.md](ge/README.md).
+
 ## Future Enhancements
 
 - [ ] Add more cities and weather metrics
 - [ ] Implement incremental loading in dbt
-- [ ] Add Great Expectations for data quality
+- [x] Add Great Expectations for data quality ✅
 - [ ] Create pre-built Metabase dashboards
 - [ ] Add alerting for pipeline failures
 - [ ] Implement CDC (Change Data Capture)
